@@ -1,73 +1,115 @@
 # MailServiceLibrary v3.0 PRO (.NET 10.0)
 
-🚀 Modern, yüksek performanslı ve her projeye (Clean Architecture, DDD, Onion) saniyeler içinde dahil edilebilen e-posta gönderim kütüphanesi.
-
-## 🌟 Yenilikler (v3.0)
-- **SendGrid API Desteği:** Kurumsal ve bulut (Azure/AWS) dostu mail gönderimi.
-- **MailKit & MimeKit:** Sektör standardı SMTP altyapısı.
-- **Provider Pattern:** Tek bir arayüz, sınırsız sağlayıcı.
+🚀 **MailServiceLibrary**, modern .NET 10 standartlarında geliştirilmiş, **Clean Architecture**, **DDD** ve **Onion Architecture** projeleriyle %100 uyumlu bir e-posta gönderim kütüphanesidir. Hem ücretsiz (SMTP/MailKit) hem de profesyonel (SendGrid API) sağlayıcıları tek bir arayüzden yönetmenizi sağlar.
 
 ---
 
-## 🛠 Kurulum ve Yapılandırma
+## 🌟 Öne Çıkan Özellikler
 
-### 1. Seçenek: Ücretsiz / SMTP (MailKit)
-Gmail, Outlook veya özel SMTP sunucunuzu kullanmak için:
+- **.NET 10.0 LTS:** En güncel performans ve dil özellikleri (Primary Constructors, Records).
+- **MailKit & MimeKit:** Güvenli ve asenkron (I/O) SMTP altyapısı.
+- **SendGrid API:** Bulut dostu, yüksek teslimat oranlı API desteği.
+- **Otomatik Validasyon:** `FluentValidation` ile mail gönderilmeden önce hatalar yakalanır.
+- **Provider Pattern:** Tek bir `IMailService` arayüzü, arkada değişebilir sağlayıcılar.
+- **Clean Arch Ready:** Bağımlılık yönetimi (DI) için hazır extension metodları.
+
+---
+
+## ⚙️ Yapılandırma (Configuration)
+
+Modern projelerde mail bilgilerinizi `appsettings.json` dosyasında saklamanız önerilir.
+
+### 1. appsettings.json Örneği
+
+```json
+{
+  "MailSettings": {
+    "Provider": "Smtp", // Veya "SendGrid"
+    "Smtp": {
+      "Host": "smtp.gmail.com",
+      "Port": 587,
+      "UserName": "senin-emailin@gmail.com",
+      "Password": "uygulama-sifresi"
+    },
+    "SendGrid": {
+      "ApiKey": "SG.xxx_yyy_zzz"
+    }
+  }
+}
+```
+
+---
+
+## 🛠 Projeye Entegrasyon (Dependency Injection)
+
+Kütüphaneyi her türlü mimariye (Clean Architecture, DDD vb.) dahil etmek çok kolaydır.
+
+### Clean Architecture Kullanımı
+
+Bu kütüphaneyi **Infrastructure** katmanında implement edip, **Application** katmanında `IMailService` arayüzünü kullanmalısınız.
+
+**Program.cs (veya DI Registration Sınıfı):**
 
 ```csharp
 using MailService.Extensions;
 
+var builder = WebApplication.CreateBuilder(args);
+
+// 1. SEÇENEK: SMTP (Ücretsiz - Gmail/Outlook vb.)
 builder.Services.AddSmtpMailService(options => {
-    options.Host = "smtp.gmail.com";
-    options.Port = 587;
-    options.UserName = "senin-emailin@gmail.com";
-    options.Password = "uygulama-sifresi";
+    options.Host = builder.Configuration["MailSettings:Smtp:Host"]!;
+    options.Port = int.Parse(builder.Configuration["MailSettings:Smtp:Port"]!);
+    options.UserName = builder.Configuration["MailSettings:Smtp:UserName"]!;
+    options.Password = builder.Configuration["MailSettings:Smtp:Password"]!;
 });
-```
 
-### 2. Seçenek: Kurumsal / SendGrid (API)
-Yüksek hacimli ve güvenli gönderim için:
-
-```csharp
-using MailService.Extensions;
-
-builder.Services.AddSendGridMailService("SENDGRID_API_KEY_BURAYA");
+// 2. SEÇENEK: SendGrid (Kurumsal - API)
+// builder.Services.AddSendGridMailService(builder.Configuration["MailSettings:SendGrid:ApiKey"]!);
 ```
 
 ---
 
-## 📧 Kullanım Örneği
+## 📧 Uygulama İçinde Kullanım
 
-Seçtiğiniz sağlayıcıdan bağımsız olarak kullanım aynıdır:
+Herhangi bir serviste veya controller'da `IMailService`'i inject ederek kullanın:
 
 ```csharp
 using MailService.Abstractions;
 using MailService.Domain;
 
-public class MyService(IMailService mailService) // .NET 10 Primary Constructor
+public class WelcomeService(IMailService mailService) // Modern .NET 10 Primary Constructor
 {
-    public async Task SendWelcomeEmail()
+    public async Task SendWelcomeEmailAsync(string customerEmail)
     {
         var email = new EmailMessage
         {
-            From = "info@sirketim.com",
-            To = ["musteri@example.com"],
+            From = "noreply@sirketim.com",
+            To = [customerEmail], // .NET 10 Collection Expression
             Subject = "Hoş Geldiniz!",
-            Body = "<h1>Merhaba!</h1><p>Sitemize başarıyla kayıt oldunuz.</p>",
+            Body = "<h1>Merhaba!</h1><p>Sistemimize başarıyla kayıt oldunuz.</p>",
             IsHtml = true
         };
 
-        await mailService.SendEmailAsync(email);
+        try 
+        {
+            await mailService.SendEmailAsync(email);
+        }
+        catch (FluentValidation.ValidationException ex)
+        {
+            // Mail formatı hatalıysa burada yakalanır
+            Console.WriteLine($"Validasyon Hatası: {ex.Message}");
+        }
     }
 }
 ```
 
 ---
 
-## 🏗 Mimari Avantajlar
-- **Clean Architecture Uyumu:** `IMailService` arayüzünü Application katmanında kullanın, kütüphane detaylarını düşünmeyin.
-- **Asenkron Yapı:** Tamamen I/O asenkron (Non-blocking) tasarım.
-- **Dökümantasyon:** ADR (Architecture Decision Records) ile tüm mimari kararlar `docs/adr/` altında kayıtlıdır.
+## 🧪 Neden Bu Kütüphane?
+
+1. **System.Net.Mail Yerine MailKit:** Microsoft artık `System.Net.Mail`'i önermiyor. MailKit daha güvenli, daha hızlı ve modern TLS protokollerini destekliyor.
+2. **Kusursuz Soyutlama:** Yarın SMTP'den SendGrid'e (veya tam tersi) geçmek isterseniz, iş mantığınızdaki (Business Logic) kodun tek bir satırını bile değiştirmenize gerek kalmaz.
+3. **Validasyon Güvencesi:** Boş konu başlığı veya geçersiz mail formatı gibi hatalar, mail sağlayıcısına gönderilmeden önce engellenir, maliyet ve zaman tasarrufu sağlar.
 
 ---
 *GEMINI.md v9.0 PRO Standartlarına göre modernize edilmiştir.*
