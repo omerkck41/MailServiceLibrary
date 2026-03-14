@@ -1,70 +1,73 @@
-# MailServiceLibrary
-Bu kütüphane, .NET uygulamalarında e-posta gönderme işlemlerini basitleştirmek amacıyla oluşturulmuştur. SMTP protokolü üzerinden e-postaları gönderebilmek için geniş çapta konfigürasyon seçenekleri sunar. Kütüphanenin tasarımı, birden fazla SMTP istemcisi ile çalışmayı ve dinamik olarak SMTP istemcisi seçmeyi destekler.
+# MailServiceLibrary v3.0 PRO (.NET 10.0)
 
->Kullanıcılar, istedikleri sayıda SMTP istemcisini tanımlayabilir ve belirli bir e-postayı hangi SMTP istemcisinin göndereceğini kontrol edebilirler. Ayrıca, belirli bir zaman diliminde gönderilecek e-posta sayısını sınırlamak için bir oran sınırlama mekanizması da mevcuttur.
+🚀 Modern, yüksek performanslı ve her projeye (Clean Architecture, DDD, Onion) saniyeler içinde dahil edilebilen e-posta gönderim kütüphanesi.
 
->Kütüphane, e-posta gönderimlerini basitleştiren ve özelleştirilebilir bir e-posta mesajı oluşturmayı sağlayan bir e-posta mesajı oluşturucusunu da içerir.
+## 🌟 Yenilikler (v3.0)
+- **SendGrid API Desteği:** Kurumsal ve bulut (Azure/AWS) dostu mail gönderimi.
+- **MailKit & MimeKit:** Sektör standardı SMTP altyapısı.
+- **Provider Pattern:** Tek bir arayüz, sınırsız sağlayıcı.
 
-## Özellikler
-* SMTP üzerinden e-posta gönderme
-* Birden fazla SMTP istemcisi ile çalışma
-* Dinamik SMTP istemcisi seçimi
-* Oran sınırlama
-* E-posta mesajı oluşturucu
+---
 
-## Bu projede çeşitli programlama prensipleri ve kalıpları kullanılmıştır:
+## 🛠 Kurulum ve Yapılandırma
 
-- **Dependency Injection (DI):** Bu prensip, bir sınıfın bağımlılıklarını (örneğin, SmtpClient) dışarıdan almasını ve bu sayede daha esnek ve test edilebilir bir kod yazmayı sağlar. Proje boyunca DI, örneğin SmtpClientSelector sınıfının SmtpMailService sınıfına geçirilmesi ile kullanılmıştır.
+### 1. Seçenek: Ücretsiz / SMTP (MailKit)
+Gmail, Outlook veya özel SMTP sunucunuzu kullanmak için:
 
-* **Strategy Pattern:** Strategy kalıbı, algoritmaları bir sınıf hiyerarşisi içerisinde kapsülleyerek algoritmayı seçme yeteneğini, çalışma zamanında dinamik olarak değiştirmeye olanak sağlar. Bu projede, ISmtpClientSelector arayüzü ve onun uygulamaları olan RateLimitingSmtpClientSelector ve RoundRobinSmtpClientSelector sınıfları strategy kalıbının bir örneğidir.
+```csharp
+using MailService.Extensions;
 
-* **Builder Pattern:** Builder kalıbı, karmaşık bir nesnenin oluşturulmasını daha basit ve daha anlaşılır hale getirir. Bu kalıp, EmailMessageBuilder sınıfı ile uygulanmıştır.
+builder.Services.AddSmtpMailService(options => {
+    options.Host = "smtp.gmail.com";
+    options.Port = 587;
+    options.UserName = "senin-emailin@gmail.com";
+    options.Password = "uygulama-sifresi";
+});
+```
 
-* **Decorator Pattern:** Decorator kalıbı, bir nesnenin işlevselliğini alt sınıflar oluşturmadan veya temel sınıf kodunu değiştirmeden dinamik olarak genişletmeye olanak sağlar. Bu proje, 'SmtpClient' nesnesinin 'SmtpClientWithStatistics' sınıfı ile genişletilmesi aracılığıyla bu kalıbı kullanmaktadır.
+### 2. Seçenek: Kurumsal / SendGrid (API)
+Yüksek hacimli ve güvenli gönderim için:
 
-* **Asynchronous Programming:** .NET'in async ve await anahtar kelimeleri, ağ işlemlerini (örneğin, e-posta gönderme) gerçekleştirirken kodun okunabilirliğini ve performansını artırmak için kullanılır. Bu proje, asenkron programlama modelini geniş çapta kullanır.
+```csharp
+using MailService.Extensions;
 
-## Nasıl Kullanılır?
->Örnek bir kullanım aşağıda verilmiştir. SMTP istemcilerini tanımlayın, istemci seçicisini oluşturun ve SMTP Mail Servisini oluşturun. Daha sonra, e-posta mesajınızı oluşturun ve gönderin.
-```cs
-public async Task SendEmailAsync_ValidEmail_DoesNotThrowException()
+builder.Services.AddSendGridMailService("SENDGRID_API_KEY_BURAYA");
+```
+
+---
+
+## 📧 Kullanım Örneği
+
+Seçtiğiniz sağlayıcıdan bağımsız olarak kullanım aynıdır:
+
+```csharp
+using MailService.Abstractions;
+using MailService.Domain;
+
+public class MyService(IMailService mailService) // .NET 10 Primary Constructor
 {
-	 var smtpClients = new List<SmtpClientWithStatistics>
-	 {
-		 new SmtpClientWithStatistics
-		 {
-			Host = "smtp-mail.outlook.com",
-			Port = 587,
-			EnableSsl = true,
-			DeliveryMethod = SmtpDeliveryMethod.Network,
-			UseDefaultCredentials = false,
-			Credentials = new NetworkCredential("microsoft@hotmail.com", "******", "Microsoft")
-		 },
-	 new SmtpClientWithStatistics
-	    {
-	 Host = "smtp-mail.outlook.com",
-	 Port = 587,
-	 EnableSsl = true,
-	 DeliveryMethod = SmtpDeliveryMethod.Network,
-	 UseDefaultCredentials = false,
-	 Credentials = new NetworkCredential("microsoft@hotmail.com", "******", "Microsoft")
-	    }
-	 };
-	
-	 var smtpClientSelector = new RateLimitingSmtpClientSelector(smtpClients);
-	 var mailService = new SmtpMailService(smtpClientSelector);
-	
-	 var emailMessage = new EmailMessageBuilder()
-	
-	   .AddTo("to@example.com", "Recipient Name")
-	   .AddCc("cc@example.com")
-	   .AddBcc("bcc@example.com")
-	   .AddSubject("Hello, World!")
-	   .AddContent("<h1>Hello, World!</h1>", isHtml: true)
-	   .MarkAsImportant()
-	   .Build();
-	
-	 await mailService.SendEmailAsync(emailMessage);
+    public async Task SendWelcomeEmail()
+    {
+        var email = new EmailMessage
+        {
+            From = "info@sirketim.com",
+            To = ["musteri@example.com"],
+            Subject = "Hoş Geldiniz!",
+            Body = "<h1>Merhaba!</h1><p>Sitemize başarıyla kayıt oldunuz.</p>",
+            IsHtml = true
+        };
+
+        await mailService.SendEmailAsync(email);
+    }
 }
 ```
-Daha fazla özelleştirme ve kullanım örneği için kodu inceleyin. Bu kütüphane, .NET projelerinde e-posta gönderme işlemlerini basitleştirmek ve SMTP istemcileri arasında kolaylıkla geçiş yapabilmek için tasarlanmıştır.
+
+---
+
+## 🏗 Mimari Avantajlar
+- **Clean Architecture Uyumu:** `IMailService` arayüzünü Application katmanında kullanın, kütüphane detaylarını düşünmeyin.
+- **Asenkron Yapı:** Tamamen I/O asenkron (Non-blocking) tasarım.
+- **Dökümantasyon:** ADR (Architecture Decision Records) ile tüm mimari kararlar `docs/adr/` altında kayıtlıdır.
+
+---
+*GEMINI.md v9.0 PRO Standartlarına göre modernize edilmiştir.*
