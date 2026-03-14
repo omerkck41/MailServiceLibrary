@@ -90,7 +90,7 @@ public class WelcomeService(IMailService mailService) // Modern .NET 10 Primary 
             IsHtml = true
         };
 
-        try 
+        try
         {
             await mailService.SendEmailAsync(email);
         }
@@ -112,4 +112,3 @@ public class WelcomeService(IMailService mailService) // Modern .NET 10 Primary 
 3. **Validasyon Güvencesi:** Boş konu başlığı veya geçersiz mail formatı gibi hatalar, mail sağlayıcısına gönderilmeden önce engellenir, maliyet ve zaman tasarrufu sağlar.
 
 ---
-*GEMINI.md v9.0 PRO Standartlarına göre modernize edilmiştir.*
